@@ -36,7 +36,7 @@ main :: proc() {
   append(&spheres, &sphere_four);
   
   camera: Camera = Camera{};
-  initialize_camera(&camera, 400, 16.0/9.0, 100);
+  initialize_camera(&camera, 1920, 16.0/9.0, 100);
   render(spheres, &camera);
 }
 
