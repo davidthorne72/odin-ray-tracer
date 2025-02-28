@@ -1,13 +1,11 @@
 package main
 
 import "core:math"
-import lua_5_1 "vendor:lua/5.1"
-import "core:path/filepath"
 
 Material :: struct {
     type : MaterialType,
     albedo: Colour30,
-    param: f32
+    param: f64
 }
 
 MaterialType :: enum u8 {
@@ -18,7 +16,7 @@ MaterialType :: enum u8 {
 
 Sphere :: struct {
     center : Point30,
-    radius : f32,
+    radius : f64,
     material: ^Material
 }
 
@@ -56,11 +54,11 @@ metal_scatter :: proc(material: ^Material, ray_in: ^Ray, hit_record: ^HitRecord,
 
 glass_scatter :: proc(material: ^Material, ray_in: ^Ray, hit_record: ^HitRecord, attenuation: ^Colour30, scattered: ^Ray) -> bool {
     attenuation^ = Colour30{1.0, 1.0, 1.0 , 0};
-    ri: f32 = hit_record.front_face ? (1.0 / material.param) : material.param;
+    ri: f64 = hit_record.front_face ? (1.0 / material.param) : material.param;
     unit_direction: Vec30 = unit_vector(ray_in.direction);
     
-    cos_theta: f32 = math.min(dotv30(-unit_direction, hit_record.normal), 1.0);
-    sin_theta: f32 = math.sqrt(1.0 - cos_theta * cos_theta);
+    cos_theta: f64 = math.min(dotv30(-unit_direction, hit_record.normal), 1.0);
+    sin_theta: f64 = math.sqrt(1.0 - cos_theta * cos_theta);
     cannot_refract: bool = material.param * sin_theta > 1.0;
     direction: Vec30;
     
@@ -74,14 +72,14 @@ glass_scatter :: proc(material: ^Material, ray_in: ^Ray, hit_record: ^HitRecord,
     return true;
 }
 
-reflectance :: proc(cosine: f32, refraction_index: f32) -> f32 {
-    r0: f32 = (1.0 - refraction_index) / (1 + refraction_index);
+reflectance :: proc(cosine: f64, refraction_index: f64) -> f64 {
+    r0: f64 = (1.0 - refraction_index) / (1 + refraction_index);
     r0 = r0 * r0;
     return r0 + (1 - r0) * math.pow((1 - cosine), 5)
 }
 
-refract :: proc(uv: ^Vec30, n: ^Vec30, etai_over_etat: f32) -> Vec30 {
-    cos_theta: f32 = math.min(dotv30(-uv^, n^), 1.0);
+refract :: proc(uv: ^Vec30, n: ^Vec30, etai_over_etat: f64) -> Vec30 {
+    cos_theta: f64 = math.min(dotv30(-uv^, n^), 1.0);
     r_out_perp: Vec30 = etai_over_etat * (uv^ + cos_theta * n^);
     r_out_parallel:  Vec30 = -math.sqrt(math.abs(1.0 - dotv30(r_out_perp, r_out_perp))) * n^;
     return r_out_perp + r_out_parallel;
@@ -89,16 +87,16 @@ refract :: proc(uv: ^Vec30, n: ^Vec30, etai_over_etat: f32) -> Vec30 {
 
 hit_sphere :: proc(sphere: ^Sphere, ray: ^Ray, ray_t: ^Interval, hit_record: ^HitRecord) -> bool {
     oc: Vec30 = sphere.center - ray.origin;
-    a: f32 = dotv30(ray.direction, ray.direction);
-    h: f32 = dotv30(ray.direction, oc);
-    c: f32 = dotv30(oc, oc) - sphere.radius * sphere.radius;
+    a: f64 = dotv30(ray.direction, ray.direction);
+    h: f64 = dotv30(ray.direction, oc);
+    c: f64 = dotv30(oc, oc) - sphere.radius * sphere.radius;
 
-    discriminant: f32 = h * h - a * c;
+    discriminant: f64 = h * h - a * c;
     if (discriminant < 0) {
         return false;
     }
-    sqrt_discriminant: f32 = math.sqrt(discriminant);
-    root: f32 = (h - sqrt_discriminant) / a;
+    sqrt_discriminant: f64 = math.sqrt(discriminant);
+    root: f64 = (h - sqrt_discriminant) / a;
     if !surrounds(ray_t, root) {
         root = (h + sqrt_discriminant) / a;
         if !surrounds(ray_t, root) {
@@ -118,7 +116,7 @@ ray_colour :: proc(spheres: [dynamic]^Sphere, ray: ^Ray, depth: int) -> Colour30
         return Colour30{0, 0, 0, 0};
     }
     hit_record: HitRecord;
-    if compute_hits(spheres, ray, &Interval{0.001, math.F32_MAX}, &hit_record) {
+    if compute_hits(spheres, ray, &Interval{0.001, math.F64_MAX}, &hit_record) {
 
         scattered: Ray = Ray{};
         attenuation: Colour30 = Colour30{};
@@ -127,14 +125,14 @@ ray_colour :: proc(spheres: [dynamic]^Sphere, ray: ^Ray, depth: int) -> Colour30
         }
     }
     unit_direction: Vec30 = unit_vector(ray.direction);
-    a: f32 = 0.5*(unit_direction[1] + 1.0);
+    a: f64 = 0.5*(unit_direction[1] + 1.0);
     return (1.0 - a) * Colour30{1.0, 1.0, 1.0, 0} + a * Colour30{0.5, 0.7, 1.0, 0};
 }
 
 compute_hits :: proc(spheres: [dynamic]^Sphere, ray: ^Ray, ray_t: ^Interval, hit_record: ^HitRecord) ->bool {
     temp_hit_record: HitRecord;
     hit_anything: bool = false;
-    closest_so_far: f32 = ray_t.max;
+    closest_so_far: f64 = ray_t.max;
     for sphere in spheres {
 
         if hit_sphere(sphere, ray, &Interval{ray_t.min, closest_so_far}, &temp_hit_record) {
